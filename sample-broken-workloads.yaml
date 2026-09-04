@@ -1,0 +1,84 @@
+# Optional: apply this to a test namespace to generate real failures for the
+# dashboard to detect (mirrors the demo-data scenarios so you can compare
+# live-cluster mode against the built-in mock data).
+#
+#   kubectl create namespace demo-failures
+#   kubectl apply -n demo-failures -f sample-broken-workloads.yaml
+#
+# Clean up with:
+#   kubectl delete namespace demo-failures
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crashloop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: crashloop-demo }
+  template:
+    metadata:
+      labels: { app: crashloop-demo }
+    spec:
+      containers:
+        - name: crashloop-demo
+          image: busybox:1.36
+          command: ["sh", "-c", "echo 'simulating a crash'; exit 1"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imagepull-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: imagepull-demo }
+  template:
+    metadata:
+      labels: { app: imagepull-demo }
+    spec:
+      containers:
+        - name: imagepull-demo
+          image: registry.example.internal/does-not-exist:typo-tag
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oom-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: oom-demo }
+  template:
+    metadata:
+      labels: { app: oom-demo }
+    spec:
+      containers:
+        - name: oom-demo
+          image: polinux/stress
+          args: ["--vm", "1", "--vm-bytes", "300M", "--vm-hang", "1"]
+          resources:
+            limits:
+              memory: "64Mi"
+            requests:
+              memory: "32Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pending-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: pending-demo }
+  template:
+    metadata:
+      labels: { app: pending-demo }
+    spec:
+      containers:
+        - name: pending-demo
+          image: nginx:1.27
+          resources:
+            requests:
+              cpu: "32"        # deliberately absurd — guarantees Pending/Insufficient cpu
+              memory: "64Gi"

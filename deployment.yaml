@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k8s-ai-troubleshooter
+---
+# Create this yourself (kept out of git): the Claude API key used for AI
+# diagnosis. The app runs fine without it — falls back to rule-based
+# explanations — so this Secret is optional.
+#
+#   kubectl create secret generic anthropic-api-key \
+#     -n k8s-ai-troubleshooter \
+#     --from-literal=ANTHROPIC_API_KEY=sk-ant-...
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-ai-troubleshooter
+  namespace: k8s-ai-troubleshooter
+  labels:
+    app: k8s-ai-troubleshooter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-ai-troubleshooter
+  template:
+    metadata:
+      labels:
+        app: k8s-ai-troubleshooter
+    spec:
+      serviceAccountName: k8s-troubleshooter
+      containers:
+        - name: dashboard
+          # Build & push this from the repo's Dockerfile, e.g.:
+          #   docker build -t <account>.dkr.ecr.<region>.amazonaws.com/k8s-ai-troubleshooter:latest .
+          #   docker push <account>.dkr.ecr.<region>.amazonaws.com/k8s-ai-troubleshooter:latest
+          image: REPLACE_WITH_YOUR_IMAGE:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PORT
+              value: "8000"
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: anthropic-api-key
+                  key: ANTHROPIC_API_KEY
+                  optional: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-ai-troubleshooter
+  namespace: k8s-ai-troubleshooter
+spec:
+  type: LoadBalancer
+  selector:
+    app: k8s-ai-troubleshooter
+  ports:
+    - port: 80
+      targetPort: 8000
