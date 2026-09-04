@@ -72,7 +72,7 @@ metadata:
   name: k8s-ai-troubleshooter
   namespace: k8s-ai-troubleshooter
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: k8s-ai-troubleshooter
   ports:
