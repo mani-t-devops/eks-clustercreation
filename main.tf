@@ -19,9 +19,10 @@ module "vpc" {
   name = "${var.cluster_name}-vpc"
   cidr = var.vpc_cidr
 
-  azs             = local.azs
-  private_subnets = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i)]
-  public_subnets  = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i + 8)]
+  azs                     = local.azs
+  private_subnets         = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i)]
+  public_subnets          = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i + 8)]
+  map_public_ip_on_launch = true
 
   enable_nat_gateway   = false
   enable_dns_hostnames = true
