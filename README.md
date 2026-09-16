@@ -128,7 +128,7 @@ terraform destroy
 | EKS control plane | version set by `cluster_version` (default 1.30) |
 | Managed node group | 1× Spot `t3.small` class node by default |
 | EKS access entry | grants the identity running `terraform apply` cluster-admin |
-| Core add-ons | coredns, kube-proxy, vpc-cni, aws-ebs-csi-driver |
+| Core add-ons | coredns, kube-proxy, vpc-cni |
 | `k8s-ai-troubleshooter` namespace | created via the Kubernetes provider once the cluster is up |
 
 ## Notes

@@ -96,7 +96,6 @@ module "eks" {
     coredns = {}
     kube-proxy = {}
     vpc-cni = {}
-    aws-ebs-csi-driver = {}
   }
 }
 
