@@ -37,13 +37,13 @@ variable "azs" {
 variable "node_instance_types" {
   description = "Instance types for the managed node group"
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["t3.small", "t3a.small"]
 }
 
 variable "node_desired_size" {
   description = "Desired number of worker nodes (kept small to minimize cost for a test cluster)"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "node_min_size" {
@@ -53,7 +53,7 @@ variable "node_min_size" {
 
 variable "node_max_size" {
   type    = number
-  default = 3
+  default = 1
 }
 
 variable "cluster_endpoint_public_access" {

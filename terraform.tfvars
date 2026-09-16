@@ -2,7 +2,7 @@
 
 aws_region      = "us-east-1"
 cluster_name    = "k8s-ai-troubleshooter-test"
-cluster_version = "1.30"
+cluster_version = "1.33"
 
 # Cheapest reasonable test setup: one Spot node.
 node_instance_types = ["t3.small", "t3a.small"]

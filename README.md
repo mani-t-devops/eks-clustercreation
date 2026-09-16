@@ -1,13 +1,13 @@
-# EKS test cluster (Terraform)
+# Minimal-cost EKS lab (Terraform)
 
 Spins up a small, throwaway EKS cluster for testing the AI Kubernetes
 Troubleshooter against real cluster data. Uses the standard, widely-used
 `terraform-aws-modules/vpc` and `terraform-aws-modules/eks` modules.
 
-**This costs real money while it's running** — roughly $0.10/hr for the EKS
-control plane plus ~$0.08/hr for two `t3.medium` nodes and a NAT gateway
-(~$0.35–0.45/hr total, region-dependent). Destroy it when you're done
-(`terraform destroy`); nothing here is sized for production use.
+**This costs real money while it's running** — the EKS control plane is
+charged even when no worker is running. This setup uses one Spot `t3.small`
+class node, no NAT gateway, and no load balancer. Actual cost varies by
+region, Spot capacity, storage, and public IPv4 usage. Destroy it when done.
 
 ## Prerequisites
 
@@ -20,13 +20,12 @@ control plane plus ~$0.08/hr for two `t3.medium` nodes and a NAT gateway
 ## 1. Review variables
 
 ```bash
-cd terraform
 cp terraform.tfvars.example terraform.tfvars
 # edit terraform.tfvars: region, cluster name, node size/count
 ```
 
-Defaults are intentionally small (2× `t3.medium`, single NAT gateway) to
-keep test-cluster cost down.
+Defaults use one Spot `t3.small` class node and no NAT gateway. Spot capacity
+can be interrupted, so use this only for disposable lab workloads.
 
 ## 2. Apply
 
@@ -51,13 +50,13 @@ kubectl get nodes    # should show your node group, Ready
 From the repo root:
 
 ```bash
-kubectl apply -f k8s/rbac.yaml
-kubectl apply -f k8s/deployment.yaml   # edit the image: field first, see below
+kubectl apply -f rbac.yaml
+kubectl apply -f deployment.yaml   # edit the image: field first, see below
 ```
 
 To actually run the dashboard's own container image in-cluster, build and
 push it to a registry the cluster can pull from (e.g. ECR) and update the
-`image:` field in `k8s/deployment.yaml`:
+`image:` field in `deployment.yaml`:
 
 ```bash
 aws ecr create-repository --repository-name k8s-ai-troubleshooter --region <region>
@@ -76,11 +75,11 @@ kubectl create secret generic anthropic-api-key \
   --from-literal=ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Get the dashboard's URL (the Service is type LoadBalancer):
+Access the dashboard without creating a billable load balancer:
 
 ```bash
-kubectl get svc -n k8s-ai-troubleshooter k8s-ai-troubleshooter
-# use the EXTERNAL-IP / hostname once it's provisioned (~1-2 min)
+kubectl port-forward -n k8s-ai-troubleshooter svc/k8s-ai-troubleshooter 8000:80
+# open http://localhost:8000
 ```
 
 **Or, simpler for local testing:** skip building/pushing an image entirely
@@ -99,7 +98,7 @@ python app.py
 
 ```bash
 kubectl create namespace demo-failures
-kubectl apply -n demo-failures -f ../k8s/sample-broken-workloads.yaml
+kubectl apply -n demo-failures -f sample-broken-workloads.yaml
 ```
 
 This creates a CrashLoopBackOff pod, an ImagePullBackOff pod, an OOMKilled
@@ -117,7 +116,7 @@ kubectl delete namespace demo-failures
 Don't forget this step — the cluster bills hourly regardless of use:
 
 ```bash
-kubectl delete -f ../k8s/deployment.yaml -f ../k8s/rbac.yaml   # if deployed in-cluster
+kubectl delete -f deployment.yaml -f rbac.yaml   # if deployed in-cluster
 terraform destroy
 ```
 
@@ -125,11 +124,11 @@ terraform destroy
 
 | Resource | Notes |
 |---|---|
-| VPC, 2 public + 2 private subnets, 1 NAT gateway | `terraform-aws-modules/vpc` |
+| VPC, 2 public + 2 private subnets, no NAT gateway | `terraform-aws-modules/vpc` |
 | EKS control plane | version set by `cluster_version` (default 1.30) |
-| Managed node group | 2× `t3.medium` on-demand by default |
+| Managed node group | 1× Spot `t3.small` class node by default |
 | EKS access entry | grants the identity running `terraform apply` cluster-admin |
-| Core add-ons | coredns, kube-proxy, vpc-cni, aws-ebs-csi-driver |
+| Core add-ons | coredns, kube-proxy, vpc-cni |
 | `k8s-ai-troubleshooter` namespace | created via the Kubernetes provider once the cluster is up |
 
 ## Notes

@@ -10,7 +10,7 @@ locals {
 
 # ---------------------------------------------------------------------------
 # VPC — a small 2-AZ VPC dedicated to this test cluster (public + private
-# subnets, one NAT gateway to keep cost down for a throwaway environment).
+# subnets with no NAT gateway for a throwaway environment).
 # ---------------------------------------------------------------------------
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
@@ -19,12 +19,12 @@ module "vpc" {
   name = "${var.cluster_name}-vpc"
   cidr = var.vpc_cidr
 
-  azs             = local.azs
-  private_subnets = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i)]
-  public_subnets  = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i + 8)]
+  azs                     = local.azs
+  private_subnets         = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i)]
+  public_subnets          = [for i, az in local.azs : cidrsubnet(var.vpc_cidr, 4, i + 8)]
+  map_public_ip_on_launch = true
 
-  enable_nat_gateway   = true
-  single_nat_gateway   = true # one shared NAT instead of one-per-AZ, to save cost on a test cluster
+  enable_nat_gateway   = false
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -53,7 +53,7 @@ module "eks" {
   cluster_endpoint_public_access_cidrs = var.cluster_endpoint_public_access_cidrs
 
   vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
+  subnet_ids = module.vpc.public_subnets
 
   # Gives the identity that ran `terraform apply` cluster-admin automatically
   # via an EKS access entry (modern replacement for the old aws-auth
@@ -78,7 +78,7 @@ module "eks" {
   eks_managed_node_groups = {
     default = {
       instance_types = var.node_instance_types
-      capacity_type  = "ON_DEMAND"
+      capacity_type  = "SPOT"
 
       min_size     = var.node_min_size
       max_size     = var.node_max_size
@@ -96,7 +96,6 @@ module "eks" {
     coredns = {}
     kube-proxy = {}
     vpc-cni = {}
-    aws-ebs-csi-driver = {}
   }
 }
 
